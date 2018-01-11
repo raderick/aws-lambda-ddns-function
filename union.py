@@ -188,40 +188,48 @@ def lambda_handler(event, context):
         else:
             print 'The tag \'%s\' is not a zone tag' % tag.get('Key')
         if 'CNAME' in tag.get('Key',{}).lstrip().upper():
-            if is_valid_hostname(tag.get('Value')):
-                cname = tag.get('Value').lstrip().lower()
-                cname_host_name = cname.split('.')[0]
-                cname_domain_suffix = cname[cname.find('.')+1:]
-                cname_domain_suffix_id = get_zone_id(cname_domain_suffix)
-                for cname_private_hosted_zone in private_hosted_zone_collection:
-                    cname_private_hosted_zone_id = get_zone_id(cname_private_hosted_zone)
-                    if cname_domain_suffix_id == cname_private_hosted_zone_id:
-                        if cname.endswith(cname_private_hosted_zone):
-                            #create CNAME record in private zone
+            print 'CNAME found'
+            cnames = tag.get('Value').split();
+            print cnames;
+            for cname in cnames:
+                if is_valid_hostname(cname):
+                    cname = cname.lstrip().lower()
+                    print cname;
+                    cname_host_name = cname.split('.')[0]
+                    cname_domain_suffix = cname[cname.find('.')+1:]
+                    cname_domain_suffix_id = get_zone_id(cname_domain_suffix)
+                    for cname_private_hosted_zone in private_hosted_zone_collection:
+                        cname_private_hosted_zone_id = get_zone_id(cname_private_hosted_zone)
+                        print "ZoneId"
+                        print cname_private_hosted_zone
+                        if cname_domain_suffix_id == cname_private_hosted_zone_id:
+                            if cname.endswith(cname_private_hosted_zone):
+                                print "creating record";
+                                #create CNAME record in private zone
+                                if state == 'running':
+                                    try:
+                                        create_resource_record(cname_private_hosted_zone_id, cname_host_name, cname_private_hosted_zone, 'CNAME', private_dns_name)
+                                    except BaseException as e:
+                                        print e
+                                else:
+                                    try:
+                                        delete_resource_record(cname_private_hosted_zone_id, cname_host_name, cname_private_hosted_zone, 'CNAME', private_dns_name)
+                                    except BaseException as e:
+                                        print e
+                    for cname_public_hosted_zone in public_hosted_zones_collection:
+                        if cname.endswith(cname_public_hosted_zone):
+                            cname_public_hosted_zone_id = get_zone_id(cname_public_hosted_zone)
+                            #create CNAME record in public zone
                             if state == 'running':
                                 try:
-                                    create_resource_record(cname_private_hosted_zone_id, cname_host_name, cname_private_hosted_zone, 'CNAME', private_dns_name)
+                                    create_resource_record(cname_public_hosted_zone_id, cname_host_name, cname_public_hosted_zone, 'CNAME', public_dns_name)
                                 except BaseException as e:
                                     print e
                             else:
                                 try:
-                                    delete_resource_record(cname_private_hosted_zone_id, cname_host_name, cname_private_hosted_zone, 'CNAME', private_dns_name)
+                                    delete_resource_record(cname_public_hosted_zone_id, cname_host_name, cname_public_hosted_zone, 'CNAME', public_dns_name)
                                 except BaseException as e:
                                     print e
-                for cname_public_hosted_zone in public_hosted_zones_collection:
-                    if cname.endswith(cname_public_hosted_zone):
-                        cname_public_hosted_zone_id = get_zone_id(cname_public_hosted_zone)
-                        #create CNAME record in public zone
-                        if state == 'running':
-                            try:
-                                create_resource_record(cname_public_hosted_zone_id, cname_host_name, cname_public_hosted_zone, 'CNAME', public_dns_name)
-                            except BaseException as e:
-                                print e
-                        else:
-                            try:
-                                delete_resource_record(cname_public_hosted_zone_id, cname_host_name, cname_public_hosted_zone, 'CNAME', public_dns_name)
-                            except BaseException as e:
-                                print e
     # Is there a DHCP option set?
     # Get DHCP option set configuration
     try:
